@@ -1,0 +1,133 @@
+/* styles the overall page layout and background */
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+/* styles the main page title */
+h1 {
+    margin-bottom: 10px;
+}
+
+/* styles the subtitle underneath main title */
+h2 {
+    margin-bottom: 15px;
+    font-weight: normal;
+    color: #555;
+}
+
+/* styles the "How to Play" open button */
+#howToPlay-openBtn {
+    margin-bottom: 30px;
+    color: #007BFF;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* styles the form container */
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* styles the text input box */
+input[type="text"] {
+    padding: 10px;
+    font-size: 16px;
+    margin-bottom: 20px;
+    width: 250px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+/* styles the submit button */
+input[type="submit"] {
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: none;
+    background-color: #28a745;
+    color: white;
+    cursor: pointer;
+}
+
+/* styles the submit button on hover */
+input[type="submit"]:hover {
+    background-color: #218838;
+}
+
+/* styles the full-screen overlay for the instructions modal */
+#howToPlay-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+/* styles the instructions modal box itself */
+#howToPlay-overlay > div {
+    background: #fff;
+    padding: 40px 50px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    line-height: 1.6;
+}
+
+/* styles the close button inside the modal */
+#howToPlay-closeBtn {
+    position: absolute;
+    top: 10px;
+   	right: 15px;
+    font-size: 26px;
+    background: none;
+    border: none;
+    color: #444;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* styles the close button on hover */
+#howToPlay-closeBtn:hover {
+    color: #e74c3c;
+}
+
+/* styles the close button in its alternate class state */
+#howToPlay-closeBtn.howToPlay {
+    text-decoration: none;
+    color: #444;
+}
+
+/* styles the modal heading */
+#howToPlay-overlay h1 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #222;
+    text-decoration: none;
+}
+
+/* styles the modal paragraph text */
+#howToPlay-overlay p {
+    color: #555;
+    font-size: 16px;
+    margin: 0 auto;
+    text-decoration: none;
+}

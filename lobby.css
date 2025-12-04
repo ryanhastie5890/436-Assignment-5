@@ -1,0 +1,173 @@
+/* styles the page layout and background */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #fafafa;
+    text-align: center;
+}
+
+/* places lobby sections next to each other */
+.lobby-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 30px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+/* styles the table container boxes */
+.table-box {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    width: 300px;
+    height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* styles the tables inside the lobby */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* styles the table headers */
+th {
+    background-color: #007bff;
+    color: white;
+    position: sticky;
+    top: 0;
+}
+
+/* styles table cells */
+td,
+th {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* colors every other row */
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* styles the mini section headers */
+h3 {
+    margin: 10px 0;
+}
+
+/* styles the new game button */
+#newGameBtn {
+    margin-top: 25px;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+/* styles the new game button on hover */
+#newGameBtn:hover {
+    background-color: #218838;
+}
+
+/* styles the how-to-play clickable text */
+.howToPlay {
+    cursor: pointer;
+}
+
+/* places and styles the game section area */
+#game-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;  
+    justify-content: flex-start;
+    width: auto;          
+    max-width: 400px;      
+    margin: 40px auto 0 auto; 
+    text-align: center;   
+}
+
+/* styles the headers inside the game section */
+#game-section h2,
+#game-section h3 {
+    margin: 10px 0;       
+    font-weight: 600;
+    text-align: center;   
+}
+
+/* styles the game info table */
+#game-info-table {
+    width: 100%;
+    max-width: 400px; 
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+/* styles the game info table headers */
+#game-info-table th {
+    background-color: #007bff; 
+    color: white;              
+    border: 2px solid black;
+    padding: 10px;
+    text-align: center;
+    font-size: 18px;
+}
+
+/* styles the game info table cells */
+#game-info-table td {
+    border: 2px solid black;
+    padding: 10px;
+    text-align: center;
+    font-size: 18px;
+    background: #f8f8f8;
+}
+
+/* styles the tic-tac-toe grid */
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(3, 120px);
+    grid-template-rows: repeat(3, 120px);
+    gap: 5px;
+
+    justify-content: center; 
+    align-items: center;     
+
+    padding: 5px;
+    background-color: #f0f0f0;
+    border-radius: 12px;
+}
+
+/* styles individual board cells */
+.cell {
+    width: 120px;
+    height: 120px;
+    background: white;
+    border: 3px solid #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 50px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+/* styles cell hover behavior */
+.cell:hover {
+    background: #e8e8e8;
+}
+
+/* places the gameplay panel layout */
+.gamePlayDiv {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 30px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
