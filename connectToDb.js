@@ -9,7 +9,8 @@ var dbCon = mysql.createConnection(
         host: 'localhost',
         user: '436_mysql_user',
         password: '123pwd456ABC+', // Ikeji msg >> change to 123pwd456ABC+
-        database: '436db'
+        database: '436db',
+	debug: true
     }
 );
 dbCon.connect(function (error) {

@@ -1,0 +1,188 @@
+/* ===== BODY STYLING ===== */
+body {
+    font-family: Arial, sans-serif;
+    background: #f4efe6;       
+    color: #222;
+    margin: 0;
+    padding: 0;
+}
+
+/* ===== APP CONTAINER ===== */
+#app {
+    max-width: 1000px;
+    margin: 1.5em auto;
+    padding: 1em;
+}
+
+/* ===== HEADER ===== */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1em;
+    background: #a0d8d8;     
+    padding: 0.8em 1em;
+    border-radius: 8px;
+}
+header h1 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+#headerControls {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+#devNames { color: #555; font-size: 0.95rem; }
+
+/* ===== GENERAL CARD ===== */
+.card {
+    background: #ffffff;
+    padding: 1em;
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1em;
+    border: 1px solid #ccc;
+}
+
+/* ===== HIDDEN ELEMENTS ===== */
+.overlay.hidden {
+    display: none;
+}
+.card.hidden {
+    display: none;
+}
+
+/* ===== PLAYERS CONTAINER ===== */
+#playersContainer {
+    display: flex;
+    gap: 1em;
+    align-items: flex-start;
+}
+
+/* ===== LIST BOX ===== */
+.listBox {
+    flex: 1;
+    min-height: 200px;
+    padding: 0.5em;
+    overflow: auto;
+}
+
+/* ===== TABLE STYLING ===== */
+.playersTable, .idleTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 auto;
+    background: #f7f7f7;
+    border: 1px solid #ccc;
+}
+
+/* ===== TABLE CELLS ===== */
+.playersTable th, .playersTable td,
+.idleTable th, .idleTable td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* ===== TABLE HEADERS ===== */
+.playersTable thead th, .idleTable thead th {
+    background: #a0e0e0;
+    font-weight: 700;
+}
+
+/* ===== TABLE WIDTHS ===== */
+#playersTable { width: 65%; }
+#idleList { width: 35%; }
+
+/* ===== BUTTONS ===== */
+button {
+    cursor: pointer;
+    padding: 0.45em 0.9em;
+    border-radius: 6px;
+    border: 1px solid #bbb;
+    background: #fff;
+    font-size: 0.95rem;
+}
+button:hover { background:#f0f0f0; }
+
+/* ===== BOARD STYLING ===== */
+.board {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    gap: 8px;
+    margin-top: 1em;
+    justify-content: center;
+}
+.board button {
+    width: 100px;
+    height: 100px;
+    font-size: 2rem;
+}
+
+/* ===== OVERLAY ===== */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+/* ===== OVERLAY CARD ===== */
+.overlayContent {
+    background: #ffffff;
+    padding: 1.5em;
+    border-radius: 8px;
+    width: 92%;
+    max-width: 420px;
+    position: relative;
+    border: 1px solid #ccc;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.18);
+}
+
+/* ===== CLOSE BUTTON ===== */
+.closeBtn {
+    position: absolute;
+    right: 0.6em;
+    top: 0.6em;
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+/* ===== MESSAGES ===== */
+.message {
+    margin-top: 0.5em;
+    color: #d00;
+}
+
+/* ===== GAME INFO ===== */
+#gameInfo {
+    font-weight: 600;
+    margin-bottom: 0.5em;
+}
+
+/* ===== SECTIONS ===== */
+#boardSection {
+    background: #d0f0f0;
+    padding: 1em;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+#loginSection {
+    background: #d0f0f0;
+    padding: 1em;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+#listsSection {
+    background: #d0f0f0;
+    padding: 1em;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}

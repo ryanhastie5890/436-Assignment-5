@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Tic-Tac-Toe - COSC436</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="styles.css">
+  
+</head>
+<body>
+  <div id="app">
+    <header style="text-align: center;">
+      <h1 style="text-align:center;">Tic-Tac-Toe (COSC 436)</h1>
+      <div id="headerControls">
+        <div style="font-size:0.95rem;"><span id="devList"> By: Antonio Debone, Ishaq Ahmed</span></div>
+        <button id="howToHeaderBtn" class="howToBtn">How To Play</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="loginSection" class="card">
+        <h2>Sign in</h2>
+        <input id="screennameInput" placeholder="Enter screen name" maxlength="50" />
+        <button id="submitLogin">SUBMIT</button>
+        <div id="loginMsg" class="message"></div>
+      </section>
+
+      <section id="listsSection" class="card hidden">
+        <div id="playersContainer">
+          <div id="playersTable" class="listBox"></div>
+          <div id="idleList" class="listBox"></div>
+        </div>
+        <div id="newGameArea"></div>
+      </section>
+
+      <section id="boardSection" class="card hidden">
+        <h2>Game</h2>
+        <div id="gameInfo"></div>
+        <div id="board" class="board"></div>
+        <div id="gameMsg" class="message"></div>
+      </section>
+    </main>
+
+    <footer>
+      <small>Course: COSC 436 — Assignment 4</small>
+    </footer>
+  </div>
+
+  <!-- How-to-play overlay uses .overlay class and is initially hidden -->
+  <div id="howToOverlay" class="overlay hidden">
+    <div class="overlayContent">
+      <button id="closeHowTo" class="closeBtn">✕</button>
+      <h3>How to play</h3>
+      <p>Classic tic-tac-toe. X goes first. Pick NEW-GAME to wait for opponent, or JOIN to accept someone's waiting game.</p>
+      <ol>
+        <li>Choose a screen name and SUBMIT.</li>
+        <li>Click NEW-GAME and pick X or O to wait for opponent.</li>
+        <li>Other clients can JOIN your waiting slot.</li>
+        <li>When the game starts, X moves first. Click an empty cell to play.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- NEW-GAME overlay container used in client_ui.js -->
+  <div id="newGameOverlay" class="overlay hidden">
+    <div class="overlayContent" id="newGameOverlayContent"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client_ui.js"></script>
+  <script src="client_game.js"></script>
+</body>
+</html>
