@@ -1,52 +1,66 @@
-/*
-=====================================================================
-File: client_ui.js
-Author:antonio, ishaq
-Date: November 2025
-Explanation:
-- This file manages all client-side UI logic and socket interactions like:
-- Handling login and screen name validation
-- Rendeing player lists: idle, waiting, playing
-- Providinh JOIN buttons for idle clients and for waiting clients (opposite side)
-- new game creation (choosing X/O)
-- Receives server messages and forwards them to ClientGame
-- Sends moves and end-game actions to server
-- The goal is to keep concerns as separate as possible.
-Basically: handles everything the player sees and interacts with.
-=====================================================================
+/* client_ui.js — WebSocket version (replaces Socket.IO version)
+   Works with the PHP ws_server.php provided above.
 */
 
-var socket_ui = null;      // storing the socket.io connection
-var myName_ui = null;      // storing this client's chosen screen name
-var myState_ui = 'idle';   // storing this client's current state, updated from server
+var socket_ui = null;      // WebSocket object
+var myName_ui = null;      // this client's chosen screen name
+var myState_ui = 'idle';   // this client's current state
 
-/*
- * Ensures a socket connection exists, creating it if needed.
- */
+// Ensure WebSocket connection exists
 function ensureSocket_ui() {
-    if (socket_ui) return; // socket already created
+    if (socket_ui && socket_ui.readyState === WebSocket.OPEN) return;
 
-    socket_ui = io(); // connecting to socket.io on the same origin
+    var host = window.location.hostname || 'localhost';
+    var url = "ws://" + host + ":8080";
+    socket_ui = new WebSocket(url);
 
-    socket_ui.on('connect', function() {
-        console.log('connected to socket server', socket_ui.id);
-    });
+    socket_ui.onopen = function() {
+        console.log('Connected to PHP WebSocket server:', url);
+    };
 
-    socket_ui.on('game-msg', function(data) {
-        handleServerMessage_ui(data); // dispatch incoming server messages
-    });
+    socket_ui.onmessage = function(evt) {
+        try {
+            var data = JSON.parse(evt.data);
+            handleServerMessage_ui(data);
+        } catch (e) {
+            console.error('Invalid JSON from server', evt.data);
+        }
+    };
+
+    socket_ui.onclose = function() {
+        console.log('Disconnected from server');
+        socket_ui = null;
+    };
+
+    socket_ui.onerror = function(err) {
+        console.error('WebSocket error', err);
+    };
 }
 
-/*
- * Sends a JSON object to the server via socket.io.
- * Calls ensureSocket_ui to guarantee the connection exists.
- */
+// send object to server as JSON
 function sendToServer_ui(obj) {
     ensureSocket_ui();
-    socket_ui.emit('game-msg', obj);
+    if (!socket_ui || socket_ui.readyState !== WebSocket.OPEN) {
+        console.warn('Socket not open yet — message will be sent once connected');
+        // Try to send after a short delay if socket becomes ready
+        var tosend = JSON.stringify(obj);
+        var tries = 0;
+        var intv = setInterval(function() {
+            tries++;
+            if (socket_ui && socket_ui.readyState === WebSocket.OPEN) {
+                socket_ui.send(tosend);
+                clearInterval(intv);
+            } else if (tries > 10) {
+                clearInterval(intv);
+                alert('Unable to send message — socket not open');
+            }
+        }, 150);
+    } else {
+        socket_ui.send(JSON.stringify(obj));
+    }
 }
 
-// =========================== UI Event Wiring ==============================
+// =========================== UI Event Wiring (same behavior as original) ==============================
 
 // Handles login button click
 document.getElementById('submitLogin').addEventListener('click', function() {
@@ -56,11 +70,11 @@ document.getElementById('submitLogin').addEventListener('click', function() {
         return;
     }
 
-    myName_ui = val;                // storing client screen name
-    window.MY_SCREENNAME = myName_ui; // making globally accessible for other scripts
+    myName_ui = val;
+    window.MY_SCREENNAME = myName_ui;
 
-    ensureSocket_ui();              // ensure socket exists
-    sendToServer_ui({ action: 'LOGIN', screenname: val }); // sending LOGIN message
+    ensureSocket_ui();
+    sendToServer_ui({ action: 'LOGIN', screenname: val });
 });
 
 // Show and hide how-to overlay
@@ -73,55 +87,48 @@ document.getElementById('closeHowTo').addEventListener('click', function() {
 
 // ========================= Server Message Handling ===================
 
-/* 
+/*
  * Receives messages from server and updates UI accordingly.
- * Handles actions:
- * - screenname-unavailable
- * - LOGIN-OK
- * - UPDATED-USER-LIST-AND-STATUS
- * - PLAY
- * - MOVE / MOVE-ACK
- * - END-GAME
- * - ERROR
+ * Handles actions: screenname-unavailable, LOGIN-OK, UPDATED-USER-LIST-AND-STATUS, PLAY, MOVE, MOVE-ACK, END-GAME, ERROR, START-GAME
  */
 function handleServerMessage_ui(data) {
-    if (!data || !data.action) return; // ignore malformed messages
+    if (!data || !data.action) return;
     var act = data.action;
 
     if (act === 'screenname-unavailable') {
         document.getElementById('loginMsg').innerText = 'Screen name unavailable. Try another.';
     } else if (act === 'LOGIN-OK') {
-        // login succeeded, hide login, show lists, update UI
         document.getElementById('loginMsg').innerText = 'Login OK.';
         document.getElementById('loginSection').classList.add('hidden');
         document.getElementById('listsSection').classList.remove('hidden');
         updateListFromServer_ui(data.list || []);
     } else if (act === 'UPDATED-USER-LIST-AND-STATUS') {
-        // update player list and states in UI
         updateListFromServer_ui(data.list || []);
     } else if (act === 'PLAY') {
-        // start a game: clear new-game area and call ClientGame.startGame
         document.getElementById('newGameArea').innerHTML = '';
         if (window.ClientGame && typeof window.ClientGame.startGame === 'function') {
             window.ClientGame.startGame(data);
         }
+    } else if (act === 'START-GAME') {
+        // START-GAME contains initial board, turn, x and o
+        // For compatibility, call startGame (client_game.js will setup board)
+        if (window.ClientGame && typeof window.ClientGame.startGame === 'function') {
+            // include board + turn in data to allow client_game to render if needed
+            window.ClientGame.startGame(data);
+        }
     } else if (act === 'MOVE') {
-        // handle opponent move
         if (window.ClientGame && typeof window.ClientGame.onOpponentMove === 'function') {
             window.ClientGame.onOpponentMove(data);
         }
     } else if (act === 'MOVE-ACK') {
-        // acknowledge own move
         if (window.ClientGame && typeof window.ClientGame.onMoveAck === 'function') {
             window.ClientGame.onMoveAck(data);
         }
     } else if (act === 'END-GAME') {
-        // handle end of game (win/draw)
         if (window.ClientGame && typeof window.ClientGame.onEndGame === 'function') {
             window.ClientGame.onEndGame(data);
         }
     } else if (act === 'ERROR') {
-        // forward errors to ClientGame or show alert if no handler
         var msg = data.message || '';
         if (window.ClientGame && typeof window.ClientGame.onServerError === 'function') {
             window.ClientGame.onServerError(data);
@@ -131,18 +138,19 @@ function handleServerMessage_ui(data) {
     }
 }
 
-// ======================creating Player List =====================
+// ====================== creating Player List =====================
 
-/*
- * Updates the UI with players who are idle, waiting, or playing.
- * 1. creates playing pairs and waiting users into the single Players table
- * 2. creates idle users in the idle list
- */
+// REPLACE the entire updateListFromServer_ui function with the following
+
+// REPLACE the entire updateListFromServer_ui function with this improved version
 function updateListFromServer_ui(list) {
+    console.log("+++++++UI update received", list);
+    console.log("updateListFromServer:", { list, myName_ui, myState_ui });
+
     var playersTable = document.getElementById('playersTable');
     var idleList = document.getElementById('idleList');
 
-    // Build Players table
+    // Build basic shell
     playersTable.innerHTML = ''
         + '<h3 style="text-align:center;margin-bottom:6px;">Playing / Waiting</h3>'
         + '<table class="playersTable" style="width:80%;border-collapse:collapse;margin:0.4em auto;border:1px solid #999;">'
@@ -155,7 +163,6 @@ function updateListFromServer_ui(list) {
         + '  <tbody id="playersBody"></tbody>'
         + '</table>';
 
-    // Build Idle table
     idleList.innerHTML = ''
         + '<h3 style="text-align:center;margin-bottom:6px;">Idle Players</h3>'
         + '<table class="idleTable" style="width:50%;border-collapse:collapse;margin:0.4em auto;border:1px solid #999;">'
@@ -168,225 +175,226 @@ function updateListFromServer_ui(list) {
     var playersBody = document.getElementById('playersBody');
     var idleBody = document.getElementById('idleBody');
 
-    var map = {}; // mapping screenname -> entry
-    list.forEach(function(it) { map[it.screenname] = it; });
+    // Normalize helper
+    function norm(s) {
+        if (!s && s !== "") return "";
+        return String(s).trim().toLowerCase();
+    }
 
-    // determine my current state from server
-    myState_ui = 'idle';
+    var myNameNorm = norm(myName_ui);
+
+    // Quick lookup table by normalized name
+    var map = {};
+    list.forEach(it => {
+        map[norm(it.screenname)] = it;
+    });
+
+    // Determine my state robustly
+    var myState_ui_now = 'idle';
     if (myName_ui) {
-        for (var i = 0; i < list.length; i++) {
-            if (list[i].screenname === myName_ui) {
-                myState_ui = list[i].state;
-                break;
-            }
-        }
+        var me = list.find(it => norm(it.screenname) === myNameNorm);
+        if (me) myState_ui_now = me.state || 'idle';
     }
+    myState_ui = myState_ui_now; // keep global in sync
 
-    // viewerSide is null if idle, otherwise 'X' or 'O' when waiting
+    var isIdle = (myState_ui === 'idle');
+    var isPlaying = (typeof myState_ui === 'string' && myState_ui.startsWith('playing'));
+    var isWaiting = (typeof myState_ui === 'string' && myState_ui.startsWith('waiting-'));
     var viewerSide = null;
-    if (myState_ui && myState_ui.indexOf('waiting-') === 0) {
-        viewerSide = myState_ui.charAt(myState_ui.length - 1); // last char X or O
+    if (isWaiting) {
+        var parts = myState_ui.split('-');
+        if (parts.length > 1) viewerSide = parts[1]; // "X" or "O"
     }
 
-    var processed = {}; // track rendered screen names to avoid duplicates
+    // Separate rows: we will collect playing and waiting rows using normalized matching
+    var processed = {};
+    var playingRows = [];
+    var waitingRows = [];
 
-    var playingRows = []; // rows where both x and o present
-    var waitingRows = []; // rows where only x or only o present
-    var idleNames = [];
-
-    // handling players table first
-    //collect playing pairs and waiting rows
-    list.forEach(function(entry) {
-        if (processed[entry.screenname]) return;
-
+    // Build playing rows (pair up opponents)
+    list.forEach(entry => {
         var st = entry.state || 'idle';
-
-        // Playing entries
-        if (st.indexOf('playing') === 0) {
+        if (st.startsWith('playing') && !processed[norm(entry.screenname)]) {
             var opp = entry.opponent;
-            if (opp && map[opp]) {
-                processed[entry.screenname] = true;
-                processed[opp] = true;
+            var oppNorm = norm(opp);
 
+            if (opp && map[oppNorm] && !processed[oppNorm]) {
+                processed[norm(entry.screenname)] = true;
+                processed[oppNorm] = true;
+
+                // determine which is X and which is O based on entry.state
                 var xName, oName;
-                if (st.indexOf('playing-X') === 0) {
+                if (st.includes('playing-X')) {
                     xName = entry.screenname;
                     oName = opp;
-                } else {
+                } else if (st.includes('playing-O')) {
                     oName = entry.screenname;
                     xName = opp;
+                } else {
+                    // fallback: use opponent fields if available
+                    xName = entry.screenname;
+                    oName = opp;
                 }
                 playingRows.push({ x: xName, o: oName });
             } else {
-                //  opponent not present in map
-                processed[entry.screenname] = true;
-                if (st.indexOf('playing-X') === 0) playingRows.push({ x: entry.screenname, o: null });
+                // no matching opponent in list (defensive)
+                processed[norm(entry.screenname)] = true;
+                if (st.includes('playing-X')) playingRows.push({ x: entry.screenname, o: null });
                 else playingRows.push({ x: null, o: entry.screenname });
             }
-            return;
         }
+    });
 
-        // Waiting entries = putting waiting player into chosen column, other column empty
-        if (st.indexOf('waiting') === 0) {
-            processed[entry.screenname] = true;
-            if (st.indexOf('waiting-X') === 0) {
-                waitingRows.push({ x: entry.screenname, o: null });
-            } else {
-                waitingRows.push({ x: null, o: entry.screenname });
+    // Build waiting rows
+    list.forEach(entry => {
+        var nameNorm = norm(entry.screenname);
+        if (!processed[nameNorm]) {
+            var st = entry.state || "idle";
+            if (st.startsWith("waiting")) {
+                processed[nameNorm] = true;
+                if (st.includes("waiting-X")) waitingRows.push({ x: entry.screenname, o: null });
+                else waitingRows.push({ x: null, o: entry.screenname });
             }
-            return;
         }
     });
 
-    //handling idle table
-    // collect idle names
-    list.forEach(function(entry) {
-        if (processed[entry.screenname]) return;
+    // Render playing rows
+    playingRows.forEach(r => {
+        let tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid #ddd";
 
-        if (!entry.state || entry.state === 'idle') {
-            idleNames.push(entry.screenname);
-            processed[entry.screenname] = true;
-        } else {
-            // back for any remaining entries
-            processed[entry.screenname] = true;
-            if (entry.state.indexOf('playing-X') === 0) playingRows.push({ x: entry.screenname, o: null });
-            else if (entry.state.indexOf('playing-O') === 0) playingRows.push({ x: null, o: entry.screenname });
-            else if (entry.state.indexOf('waiting-X') === 0) waitingRows.push({ x: entry.screenname, o: null });
-            else if (entry.state.indexOf('waiting-O') === 0) waitingRows.push({ x: null, o: entry.screenname });
-        }
-    });
+        let tdX = document.createElement("td");
+        tdX.style.padding = "10px";
+        tdX.style.textAlign = "center";
+        tdX.style.borderRight = "1px solid #999";
+        tdX.innerText = r.x || "";
 
-    // create playing rowsonly names
-    playingRows.forEach(function(r) {
-        var tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #ddd';
+        let tdO = document.createElement("td");
+        tdO.style.padding = "10px";
+        tdO.style.textAlign = "center";
+        tdO.innerText = r.o || "";
 
-        var tdLeft = document.createElement('td');   // X column (left)
-        tdLeft.style.padding = '10px';
-        tdLeft.style.borderRight = '1px solid #999';
-        tdLeft.style.textAlign = 'center';
-        tdLeft.innerText = r.x || '';
-
-        var tdRight = document.createElement('td');  // O column (right)
-        tdRight.style.padding = '10px';
-        tdRight.style.textAlign = 'center';
-        tdRight.innerText = r.o || '';
-
-        tr.appendChild(tdLeft);
-        tr.appendChild(tdRight);
+        tr.appendChild(tdX);
+        tr.appendChild(tdO);
         playersBody.appendChild(tr);
     });
 
-    /* creating waiting rows. 
-     * JOIN button is shown to all other idle pplayers also waiting players with opposite choose
-     */
-    waitingRows.forEach(function(r) {
-        var tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #ddd';
+    // Render waiting rows (with JOIN buttons only when allowed)
+    waitingRows.forEach(r => {
+        let tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid #ddd";
 
-        var tdLeft = document.createElement('td');   // X column 
-        tdLeft.style.padding = '10px';
-        tdLeft.style.borderRight = '1px solid #999';
-        tdLeft.style.textAlign = 'center';
+        let tdX = document.createElement("td");
+        tdX.style.padding = "10px";
+        tdX.style.textAlign = "center";
+        tdX.style.borderRight = "1px solid #999";
 
-        var tdRight = document.createElement('td');  // O column 
-        tdRight.style.padding = '10px';
-        tdRight.style.textAlign = 'center';
+        let tdO = document.createElement("td");
+        tdO.style.padding = "10px";
+        tdO.style.textAlign = "center";
 
+        // waiting as X (opponent may join on O side)
         if (r.x) {
-            // waiting as x
-            tdLeft.innerText = r.x;
-            // plaer may join on O side if viewer is idle OR viewer is waiting as O
-            var canJoin = false;
-            if (r.x !== myName_ui) {
-                if (viewerSide === null) canJoin = true;
-                else if (viewerSide === 'O') canJoin = true; // viewer waiting as O can join X
+            tdX.innerText = r.x;
+
+            // Normalized comparisons
+            let waitingXNorm = norm(r.x);
+
+            // allowJoin only if:
+            // 1) current viewer is not the same player
+            // 2) viewer is idle OR viewer is waiting as O (so they can join an X)
+            let allowJoin = false;
+            if (myName_ui) {
+                if (waitingXNorm !== myNameNorm) {
+                    if (isIdle || viewerSide === "O") allowJoin = true;
+                }
             }
-            if (canJoin) {
-                var joinBtn = document.createElement('button');
-                joinBtn.innerText = 'JOIN';
-                joinBtn.style.display = 'inline-block';
-                joinBtn.style.margin = '0 auto';
-                joinBtn.addEventListener('click', function() {
+
+            // attach join button to O column (since you join on the O side)
+            if (allowJoin) {
+                let btn = document.createElement("button");
+                btn.innerText = "JOIN";
+                btn.addEventListener("click", () => {
                     sendToServer_ui({ action: 'JOIN', from: myName_ui, to: r.x });
                 });
-                tdRight.appendChild(joinBtn);
-            } else {
-                tdRight.innerText = '';
+                tdO.appendChild(btn);
             }
-        } else if (r.o) {
-            // waiting as O
-            tdRight.innerText = r.o;
-            // viewer may join on X side if viewer is idle OR viewer is waiting as X
-            var canJoin2 = false;
-            if (r.o !== myName_ui) {
-                if (viewerSide === null) canJoin2 = true;
-                else if (viewerSide === 'X') canJoin2 = true; // viewer waiting as X can join O
+        }
+        // waiting as O (opponent may join on X side)
+        else if (r.o) {
+            tdO.innerText = r.o;
+
+            let waitingONorm = norm(r.o);
+
+            let allowJoin = false;
+            if (myName_ui) {
+                if (waitingONorm !== myNameNorm) {
+                    if (isIdle || viewerSide === "X") allowJoin = true;
+                }
             }
-            if (canJoin2) {
-                var joinBtn2 = document.createElement('button');
-                joinBtn2.innerText = 'JOIN';
-                joinBtn2.style.display = 'inline-block';
-                joinBtn2.style.margin = '0 auto';
-                joinBtn2.addEventListener('click', function() {
+
+            // attach join button to X column (since you join on the X side)
+            if (allowJoin) {
+                let btn = document.createElement("button");
+                btn.innerText = "JOIN";
+                btn.addEventListener("click", () => {
                     sendToServer_ui({ action: 'JOIN', from: myName_ui, to: r.o });
                 });
-                tdLeft.appendChild(joinBtn2);
-            } else {
-                tdLeft.innerText = '';
+                tdX.appendChild(btn);
             }
         }
 
-        tr.appendChild(tdLeft);
-        tr.appendChild(tdRight);
+        tr.appendChild(tdX);
+        tr.appendChild(tdO);
         playersBody.appendChild(tr);
     });
 
-    // create idle list as table rows
-    idleNames.forEach(function(name) {
-        var tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #ddd';
-        var td = document.createElement('td');
-        td.style.padding = '10px';
-        td.style.textAlign = 'center';
-        td.innerText = name;
-        tr.appendChild(td);
-        idleBody.appendChild(tr);
+    // Render idle list
+    list.forEach(entry => {
+        if (!entry.state || entry.state === 'idle') {
+            let tr = document.createElement("tr");
+            tr.style.borderBottom = "1px solid #ddd";
+
+            let td = document.createElement("td");
+            td.style.padding = "10px";
+            td.style.textAlign = "center";
+            td.innerText = entry.screenname;
+
+            tr.appendChild(td);
+            idleBody.appendChild(tr);
+        }
     });
 
-    // Showing NEW-GAME button only if idle
-    var newGameArea = document.getElementById('newGameArea');
-    newGameArea.innerHTML = '';
+    // NEW-GAME area: only show when logged-in and truly idle (not waiting/playing)
+    var newGameArea = document.getElementById("newGameArea");
+    newGameArea.innerHTML = "";
+
     if (myName_ui && myState_ui === 'idle') {
-        var ng = document.createElement('button');
-        ng.innerText = 'NEW-GAME';
-        ng.style.display = 'block';
-        ng.style.margin = '8px auto';
-        ng.addEventListener('click', createNewGamePrompt_ui);
-        newGameArea.appendChild(ng);
+        let btn = document.createElement("button");
+        btn.innerText = "NEW-GAME";
+        btn.style.display = "block";
+        btn.style.margin = "8px auto";
+        btn.addEventListener("click", createNewGamePrompt_ui);
+        newGameArea.appendChild(btn);
     }
+
+    // debug info (optional)
+    // console.log("myName:", myName_ui, "myState:", myState_ui, "viewerSide:", viewerSide);
 }
 
-/* 
- * Displays prompt allowing player to choose X or O and wait for opponent.
- * NEW behavior: opens a centered overlay (so the prompt is visible on top of the page).
- * This is purely UI; it still sends the server message NEW-GAME as before.
- */
+
+// NEW-GAME prompt (overlay) — uses sendToServer_ui
 function createNewGamePrompt_ui() {
-    // overlay elements in DOM
     var overlay = document.getElementById('newGameOverlay');
     var content = document.getElementById('newGameOverlayContent');
 
-    // opening overlay for starting new game
     if (!overlay || !content) {
         var newGameArea = document.getElementById('newGameArea');
         newGameArea.innerHTML = '';
-        var msg = document.createElement('div'); 
+        var msg = document.createElement('div');
         msg.innerText = 'Choose side to wait as:';
-        var xBtn = document.createElement('button'); 
-        xBtn.innerText = 'X';
-        var oBtn = document.createElement('button'); 
-        oBtn.innerText = 'O';
+        var xBtn = document.createElement('button'); xBtn.innerText = 'X';
+        var oBtn = document.createElement('button'); oBtn.innerText = 'O';
         xBtn.addEventListener('click', function() {
             sendToServer_ui({ action: 'NEW-GAME', screenname: myName_ui, choice: 'X' });
             newGameArea.innerHTML = '<i>Waiting for opponent as X...</i>';
@@ -399,7 +407,6 @@ function createNewGamePrompt_ui() {
         return;
     }
 
-    // Build prompt content
     content.innerHTML = '';
 
     var closeBtn = document.createElement('button');
@@ -410,21 +417,17 @@ function createNewGamePrompt_ui() {
         content.innerHTML = '';
     });
 
-    var msg = document.createElement('div');
-    msg.style.marginBottom = '10px';
+    var msg = document.createElement('div'); msg.style.marginBottom = '10px';
     msg.innerText = 'Choose side to wait as:';
 
-    var xBtn = document.createElement('button');
-    xBtn.style.marginRight = '10px';
-    xBtn.innerText = 'X';
+    var xBtn = document.createElement('button'); xBtn.style.marginRight = '10px'; xBtn.innerText = 'X';
     xBtn.addEventListener('click', function() {
         sendToServer_ui({ action: 'NEW-GAME', screenname: myName_ui, choice: 'X' });
         overlay.classList.add('hidden');
         content.innerHTML = '';
     });
 
-    var oBtn = document.createElement('button');
-    oBtn.innerText = 'O';
+    var oBtn = document.createElement('button'); oBtn.innerText = 'O';
     oBtn.addEventListener('click', function() {
         sendToServer_ui({ action: 'NEW-GAME', screenname: myName_ui, choice: 'O' });
         overlay.classList.add('hidden');
@@ -436,12 +439,10 @@ function createNewGamePrompt_ui() {
     content.appendChild(xBtn);
     content.appendChild(oBtn);
 
-    // show overlay
     overlay.classList.remove('hidden');
 }
 
-// ======================== Public API =========================
-// so that accesble from different js files. (could have used ES6 modules but preferreed this)
+// Public API for client_game.js to call
 window.ClientUI = {
     getMyName: function() { return myName_ui; },
     sendMove: function(screenname, cell) {
@@ -451,4 +452,3 @@ window.ClientUI = {
         sendToServer_ui({ action: 'END-GAME', rowId: rowId, result: result, winner: winner, winnerName: winnerName });
     }
 };
-
