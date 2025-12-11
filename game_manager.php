@@ -298,7 +298,7 @@ class GameManager
        
        $screenname = trim($screenname);
        $fromRow =  $this->findPlayerRowByName($screenname);
-       if($fromRow===false) return ['action' => 'ERROR', 'message' => 'DB error'];
+       if($fromRow===false) return ['action' => 'ERROR', 'message' => 'DB error'];//handle potential initial errors
        if(count($fromRow) === 0 ) return ['action' => 'ERROR', 'message' => 'Not playing'];
 
        $row = $fromRow[0];
@@ -309,50 +309,50 @@ class GameManager
        if($game === null)
        {
         if(($row['x_player'] !== null)&&($row['o_player'] !== null)){
-            $this->games[$gid] = [ 'board'=> array_fill(0,9, ""), 'turn'=> 'X', 'x'=> trim($row['x_player']), 'o'=> trim($row['o_player'])];
+            $this->games[$gid] = [ 'board'=> array_fill(0,9, ""), 'turn'=> 'X', 'x'=> trim($row['x_player']), 'o'=> trim($row['o_player'])];//init game
         }
         else return ['action' => 'ERROR', 'message' => 'Game not ready'];
 
        }        
 
-       $g = $this->games[$gid];
+       $g = $this->games[$gid];//pull game into this variable
       
        $playerSymbol = ($g['x'] === $screenname) ? 'X' : (($g['o'] === $screenname) ? 'O' : null);
-         if($playerSymbol === null) return ['action' => 'ERROR', 'message' => 'Player not in game'];
+         if($playerSymbol === null) return ['action' => 'ERROR', 'message' => 'Player not in game'];//set players symbol or send error
         
-       $opponent = ($playerSymbol === 'X') ? $g['o'] : $g['x'];
+       $opponent = ($playerSymbol === 'X') ? $g['o'] : $g['x'];//set opponent's symbol
 
       
 
        
      
-       if($g['turn'] !== $playerSymbol) return ['action' => 'ERROR', 'message' => 'Not your turn','opponent'=>$opponent];
+       if($g['turn'] !== $playerSymbol) return ['action' => 'ERROR', 'message' => 'Not your turn','opponent'=>$opponent];//not turn error
 
        $ind = $cell -1;
        $board = $g['board'];
-       if($ind<0 || $ind > 8) return ['action' => 'ERROR', 'message' => 'Invalid cell','opponent'=>$opponent, 'turn'=>$g['turn']];
-       if($board[$ind] !== "") return ['action' => 'ERROR', 'message' => 'Cell occupied','opponent'=>$opponent,'turn'=>$g['turn']];
+       if($ind<0 || $ind > 8) return ['action' => 'ERROR', 'message' => 'Invalid cell','opponent'=>$opponent, 'turn'=>$g['turn']];//wrong parameter check
+       if($board[$ind] !== "") return ['action' => 'ERROR', 'message' => 'Cell occupied','opponent'=>$opponent,'turn'=>$g['turn']];//filled square check
 
        //apply move
        $board[$ind] = $playerSymbol;
-       $g['turn'] = ($g['turn'] === 'X') ? 'O' : 'X';
+       $g['turn'] = ($g['turn'] === 'X') ? 'O' : 'X';//change turn
       
        $g['board'] = $board;
-       $this->games[$gid] = $g;
+       $this->games[$gid] = $g;//send game back into the array
        
        //check win
        $winner = $this->checkWin($g['board']);
        if($winner){
         $winnerName = ($winner === 'X') ? $g['x'] : $g['o'];
         $this->deletePlayerById($gid);
-        unset($this->games[$gid]);
+        unset($this->games[$gid]);//remove game
         return ['action' => 'END-GAME', 'result' => 'WIN', 'winner'=>$winner,'winnerName'=>$winnerName,'players'=>[$g['x'],$g['o']],'cell'=>$cell,'symbol'=>$playerSymbol,'opponent'=>$opponent,'turn'=>$g['turn']];
         
        }
        //Check draw
         if($this->checkDraw($g['board'])){
         $this->deletePlayerById($gid);
-        unset($this->games[$gid]);
+        unset($this->games[$gid]);//remove game
         return ['action' => 'END-GAME', 'result' => 'DRAW', 'players'=>[$g['x'],$g['o']],'cell'=>$cell,'symbol'=>$playerSymbol,'opponent'=>$opponent,'turn'=>$g['turn']];
 
         }
@@ -395,12 +395,12 @@ public function checkDraw($board) {
         $hasO = in_array('O', $s, true);
         $emptyCount = $this->numNull($s);
 
-        if ($this->numNull($board) == 2 && $emptyCount == 2) {
+        if ($this->numNull($board) == 2 && $emptyCount == 2) {//early draw
             continue;
         }
 
         if (!($hasX && $hasO)) {
-            $anyPotential = true;
+            $anyPotential = true;//other early draw scenario
             break;
         }
     }
@@ -419,7 +419,7 @@ public function checkDraw($board) {
     return false;
 }
 
-public function numNull($board) {
+public function numNull($board) {//used in determining early draw
     $count = 0;
     foreach ($board as $cell) {
         if ($cell === null || $cell === '') {
