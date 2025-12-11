@@ -148,8 +148,7 @@ do {
                 broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);
             }
 
-        }
-        else if ($action === 'MOVE') { //handler for move commands
+        } else if ($action === 'MOVE') { //handler for move commands
             $screenname = trim($obj['screenname'] ?? '');//trimming to ensure that data matches
             $cell = intval($obj['cell'] ?? '');
             if ($screenname === '' || $cell < 1 || $cell > 9) {//send error for wrong parameters
@@ -159,22 +158,21 @@ do {
             $res = $gm->handleMove($screenname, $cell);//handleMove is in the game managers and handles the logic
             if ($res['action'] === 'ERROR') {
                 sendToClient($clientSocket, $res);//if error
-                
+
             } else {
                 $opponent = $res['opponent'] ?? null;
                 $players = $res['players'] ?? [];
-                if ($opponent && isset($GLOBALS['screenToSocket'][$opponent])) {
-                   sendToClient($GLOBALS['screenToSocket'][$opponent], $res);//send move to the opposing players
-        }
-             sendToClient($clientSocket, $res);//used in case end game is returned so that it is sent to player 1
-             sendToClient($clientSocket, ['action'=>'MOVE-ACK','cell'=>$cell,'symbol'=>$res['symbol']]);//acknowledge move
-             $list2 = $gm->getStatusListForBroadcast();
-             broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);//update status list
+                if ($opponent && isset($screenToSocket[$opponent])) {
+                    sendToClient($screenToSocket[$opponent], $res);//send move to the opposing players
+                }
+
+                sendToClient($clientSocket, $res);//used in case end game is returned so that it is sent to player 1
+                sendToClient($clientSocket, ['action' => 'MOVE-ACK', 'cell' => $cell, 'symbol' => $res['symbol']]);//acknowledge move
+                $list2 = $gm->getStatusListForBroadcast();
+                broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);//update status list
 
             }
-        }
-    
-        else {
+        } else {
             sendToClient($clientSocket, ['action' => 'ERROR', 'message' => 'Unknown action']);
         }
     }
@@ -223,6 +221,13 @@ function disconnectClient($clientSocket, &$listOfConnectedClients, &$screenToSoc
             echo "User {$screenname} logged out.\n";
         } else {
             echo "Failed to remove {$screenname} from logged_in\n";
+        }
+
+        // removes from players table
+        if ($gm->removePlayerRowsByScreenname($screenname)) {
+            echo "Removed {$screenname} from players table.\n";
+        } else {
+            echo "No rows removed for {$screenname} in players table.\n";
         }
 
         // removes socket mappings
