@@ -149,33 +149,32 @@ do {
             }
 
         }
-        else if ($action === 'MOVE') {
-            $screenname = trim($obj['screenname'] ?? '');
+        else if ($action === 'MOVE') { //handler for move commands
+            $screenname = trim($obj['screenname'] ?? '');//trimming to ensure that data matches
             $cell = intval($obj['cell'] ?? '');
-            if ($screenname === '' || $cell < 1 || $cell > 9) {
+            if ($screenname === '' || $cell < 1 || $cell > 9) {//send error for wrong parameters
                 sendToClient($clientSocket, ['action' => 'ERROR', 'message' => 'Invalid MOVE parameters']);
                 continue;
             }
-            $res = $gm->handleMove($screenname, $cell);
+            $res = $gm->handleMove($screenname, $cell);//handleMove is in the game managers and handles the logic
             if ($res['action'] === 'ERROR') {
-                sendToClient($clientSocket, $res);
+                sendToClient($clientSocket, $res);//if error
                 
             } else {
                 $opponent = $res['opponent'] ?? null;
                 $players = $res['players'] ?? [];
                 if ($opponent && isset($GLOBALS['screenToSocket'][$opponent])) {
-                   sendToClient($GLOBALS['screenToSocket'][$opponent], $res);
+                   sendToClient($GLOBALS['screenToSocket'][$opponent], $res);//send move to the opposing players
         }
-             sendToClient($clientSocket, $res);
-             sendToClient($clientSocket, ['action'=>'MOVE-ACK','cell'=>$cell,'symbol'=>$res['symbol']]);
+             sendToClient($clientSocket, $res);//used in case end game is returned so that it is sent to player 1
+             sendToClient($clientSocket, ['action'=>'MOVE-ACK','cell'=>$cell,'symbol'=>$res['symbol']]);//acknowledge move
              $list2 = $gm->getStatusListForBroadcast();
-             broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);
+             broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);//update status list
 
             }
         }
     
         else {
-        } else {
             sendToClient($clientSocket, ['action' => 'ERROR', 'message' => 'Unknown action']);
         }
     }
