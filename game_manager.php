@@ -200,8 +200,8 @@ private function findWaitingRowByOpponent($name) {
             $this->games[$waitingRow['id']] = [
                 'board' => array_fill(0,9, ""),
                 'turn' => 'X',
-                'x' => $xName,
-                'o' => $oName
+                'x' => trim($xName),
+                'o' => trim($oName)
             ];
         }
 
@@ -218,4 +218,143 @@ private function findWaitingRowByOpponent($name) {
         if ($list === false) return [];
         return $list;
     }
+
+    // Player move
+    public function handleMove($screenname,$cell){
+       
+       $screenname = trim($screenname);
+       $fromRow =  $this->findPlayerRowByName($screenname);
+       if($fromRow===false) return ['action' => 'ERROR', 'message' => 'DB error'];
+       if(count($fromRow) === 0 ) return ['action' => 'ERROR', 'message' => 'Not playing'];
+
+       $row = $fromRow[0];
+       $gid = $row['id'];
+
+       //create game if missing
+       $game = $this->getInMemoryGame($gid);
+       if($game === null)
+       {
+        if(($row['x_player'] !== null)&&($row['o_player'] !== null)){
+            $this->games[$gid] = [ 'board'=> array_fill(0,9, ""), 'turn'=> 'X', 'x'=> trim($row['x_player']), 'o'=> trim($row['o_player'])];
+        }
+        else return ['action' => 'ERROR', 'message' => 'Game not ready'];
+
+       }        
+
+       $g = $this->games[$gid];
+      
+       $playerSymbol = ($g['x'] === $screenname) ? 'X' : (($g['o'] === $screenname) ? 'O' : null);
+         if($playerSymbol === null) return ['action' => 'ERROR', 'message' => 'Player not in game'];
+        
+       $opponent = ($playerSymbol === 'X') ? $g['o'] : $g['x'];
+
+      
+
+       
+     
+       if($g['turn'] !== $playerSymbol) return ['action' => 'ERROR', 'message' => 'Not your turn','opponent'=>$opponent];
+
+       $ind = $cell -1;
+       $board = $g['board'];
+       if($ind<0 || $ind > 8) return ['action' => 'ERROR', 'message' => 'Invalid cell','opponent'=>$opponent, 'turn'=>$g['turn']];
+       if($board[$ind] !== "") return ['action' => 'ERROR', 'message' => 'Cell occupied','opponent'=>$opponent,'turn'=>$g['turn']];
+
+       //apply move
+       $board[$ind] = $playerSymbol;
+       $g['turn'] = ($g['turn'] === 'X') ? 'O' : 'X';
+      
+       $g['board'] = $board;
+       $this->games[$gid] = $g;
+       
+       //check win
+       $winner = $this->checkWin($g['board']);
+       if($winner){
+        $winnerName = ($winner === 'X') ? $g['x'] : $g['o'];
+        $this->deletePlayerById($gid);
+        unset($this->games[$gid]);
+        return ['action' => 'END-GAME', 'result' => 'WIN', 'winner'=>$winner,'winnerName'=>$winnerName,'players'=>[$g['x'],$g['o']],'cell'=>$cell,'symbol'=>$playerSymbol,'opponent'=>$opponent,'turn'=>$g['turn']];
+        
+       }
+       //Check draw
+        if($this->checkDraw($g['board'])){
+        $this->deletePlayerById($gid);
+        unset($this->games[$gid]);
+        return ['action' => 'END-GAME', 'result' => 'DRAW', 'players'=>[$g['x'],$g['o']],'cell'=>$cell,'symbol'=>$playerSymbol,'opponent'=>$opponent,'turn'=>$g['turn']];
+
+        }
+
+       //Normal move
+        return ['action'=> 'MOVE', 'cell'=>$cell,'symbol'=>$playerSymbol,'opponent'=>$opponent,'next'=>$g['turn'],'players'=>[$g['x'],$g['o']]];
+
+    }
+
+    
+public function checkWin($board) {
+    $wins = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+    ];
+
+    foreach ($wins as $win) {
+        $a = $win[0]; $b = $win[1]; $c = $win[2];
+        if (!empty($board[$a]) && $board[$a] === $board[$b] && $board[$a] === $board[$c]) {
+            return $board[$a];
+        }
+    }
+    return null;
 }
+
+public function checkDraw($board) {
+    $wins = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+    ];
+
+    $anyPotential = false;
+
+    foreach ($wins as $win) {
+        $a = $win[0]; $b = $win[1]; $c = $win[2];
+        $s = [$board[$a], $board[$b], $board[$c]];
+        $hasX = in_array('X', $s, true);
+        $hasO = in_array('O', $s, true);
+        $emptyCount = $this->numNull($s);
+
+        if ($this->numNull($board) == 2 && $emptyCount == 2) {
+            continue;
+        }
+
+        if (!($hasX && $hasO)) {
+            $anyPotential = true;
+            break;
+        }
+    }
+
+    if (!$anyPotential) return true;
+
+    $emptyExists = false;
+    foreach ($board as $cell) {
+        if ($cell === '') {
+            $emptyExists = true;
+            break;
+        }
+    }
+    if (!$emptyExists) return true;
+
+    return false;
+}
+
+public function numNull($board) {
+    $count = 0;
+    foreach ($board as $cell) {
+        if ($cell === null || $cell === '') {
+            $count++;
+        }
+    }
+    return $count;
+}
+
+}
+
+

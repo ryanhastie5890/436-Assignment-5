@@ -141,7 +141,33 @@ do {
                 $list2 = $gm->getStatusListForBroadcast();
                 broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);
             }
+
         }
+        else if ($action === 'MOVE') {
+            $screenname = trim($obj['screenname'] ?? '');
+            $cell = intval($obj['cell'] ?? '');
+            if ($screenname === '' || $cell < 1 || $cell > 9) {
+                sendToClient($clientSocket, ['action' => 'ERROR', 'message' => 'Invalid MOVE parameters']);
+                continue;
+            }
+            $res = $gm->handleMove($screenname, $cell);
+            if ($res['action'] === 'ERROR') {
+                sendToClient($clientSocket, $res);
+                
+            } else {
+                $opponent = $res['opponent'] ?? null;
+                $players = $res['players'] ?? [];
+                if ($opponent && isset($GLOBALS['screenToSocket'][$opponent])) {
+                   sendToClient($GLOBALS['screenToSocket'][$opponent], $res);
+        }
+             sendToClient($clientSocket, $res);
+             sendToClient($clientSocket, ['action'=>'MOVE-ACK','cell'=>$cell,'symbol'=>$res['symbol']]);
+             $list2 = $gm->getStatusListForBroadcast();
+             broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);
+
+            }
+        }
+    
         else {
             sendToClient($clientSocket, ['action' => 'ERROR', 'message' => 'Unknown action']);
         }
@@ -278,3 +304,4 @@ function broadcastToAll($clients, $assoc) {
         @socket_write($client, $framed, strlen($framed));
     }
 }
+
