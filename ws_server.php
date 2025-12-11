@@ -5,7 +5,7 @@ require_once __DIR__ . '/game_manager.php';
 
 $port = 8080;
 $serverSocket = createServerConnection($port);
-socket_listen($serverSocket) or die ("Unable to start server, exiting!\n");
+socket_listen($serverSocket) or die("Unable to start server, exiting!\n");
 echo "WebSocket server running on port $port\n";
 
 $listOfConnectedClients = [];
@@ -15,7 +15,7 @@ $socketToScreen = [];   // spl_object_id(socket) -> screenname
 $gm = new GameManager();
 
 do {
-    $clientsWithData = waitForIncomingMessageFromClients($listOfConnectedClients, $serverSocket);
+    $clientsWithData = array_unique(waitForIncomingMessageFromClients($listOfConnectedClients, $serverSocket), SORT_REGULAR);
 
     // If server socket is readable -> accept new connection(s)
     if (in_array($serverSocket, $clientsWithData, true)) {
@@ -42,7 +42,8 @@ do {
     // Process readable client sockets
     foreach ($clientsWithData as $clientSocket) {
         // skip serverSocket because we already handled accept above
-        if ($clientSocket === $serverSocket) continue;
+        if ($clientSocket === $serverSocket)
+            continue;
 
         $len = @socket_recv($clientSocket, $buffer, 8192, 0);
         if ($len === false || $len == 0) {
@@ -78,7 +79,7 @@ do {
         if ($action === 'LOGIN') {
             $screenname = trim($obj['screenname'] ?? '');
             if ($screenname === '') {
-                sendToClient($clientSocket, ['action' => 'screenname-unavailable']);
+                sendToClient($clientSocket, assoc: ['action' => 'screenname-unavailable']);
                 continue;
             }
             $intKey = spl_object_id($clientSocket);
@@ -94,8 +95,7 @@ do {
             } else {
                 sendToClient($clientSocket, ['action' => 'ERROR', 'message' => ($res['message'] ?? 'Unknown')]);
             }
-        }
-        else if ($action === 'NEW-GAME') {
+        } else if ($action === 'NEW-GAME') {
             $screenname = trim($obj['screenname'] ?? '');
             $choice = strtoupper(trim($obj['choice'] ?? ''));
             if ($screenname === '' || ($choice !== 'X' && $choice !== 'O')) {
@@ -108,8 +108,7 @@ do {
             } else {
                 sendToClient($clientSocket, $res);
             }
-        }
-        else if ($action === 'JOIN') {
+        } else if ($action === 'JOIN') {
             $from = trim($obj['from'] ?? '');
             $to = trim($obj['to'] ?? '');
             if ($from === '' || $to === '') {
@@ -119,30 +118,36 @@ do {
             $res = $gm->handleJoin($from, $to);
             if ($res['action'] === 'ERROR') {
                 sendToClient($clientSocket, $res);
-                if (isset($res['list'])) broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $res['list']]);
+                if (isset($res['list']))
+                    broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $res['list']]);
                 continue;
             } else if ($res['action'] === 'PLAY') {
-                $x = $res['x']; $o = $res['o']; $rowId = $res['rowId'];
-                if (isset($screenToSocket[$x])) sendToClient($screenToSocket[$x], ['action' => 'PLAY', 'x' => $x, 'o' => $o, 'rowId' => $rowId]);
-                if (isset($screenToSocket[$o])) sendToClient($screenToSocket[$o], ['action' => 'PLAY', 'x' => $x, 'o' => $o, 'rowId' => $rowId]);
+                $x = $res['x'];
+                $o = $res['o'];
+                $rowId = $res['rowId'];
+                if (isset($screenToSocket[$x]))
+                    sendToClient($screenToSocket[$x], ['action' => 'PLAY', 'x' => $x, 'o' => $o, 'rowId' => $rowId]);
+                if (isset($screenToSocket[$o]))
+                    sendToClient($screenToSocket[$o], ['action' => 'PLAY', 'x' => $x, 'o' => $o, 'rowId' => $rowId]);
 
                 $inMem = $gm->getInMemoryGame($rowId);
                 $startPayload = [
                     'action' => 'START-GAME',
                     'rowId' => $rowId,
-                    'board' => $inMem ? $inMem['board'] : array_fill(0,9,""),
+                    'board' => $inMem ? $inMem['board'] : array_fill(0, 9, ""),
                     'turn' => $inMem ? $inMem['turn'] : 'X',
                     'x' => $x,
                     'o' => $o
                 ];
-                if (isset($screenToSocket[$x])) sendToClient($screenToSocket[$x], $startPayload);
-                if (isset($screenToSocket[$o])) sendToClient($screenToSocket[$o], $startPayload);
+                if (isset($screenToSocket[$x]))
+                    sendToClient($screenToSocket[$x], $startPayload);
+                if (isset($screenToSocket[$o]))
+                    sendToClient($screenToSocket[$o], $startPayload);
 
                 $list2 = $gm->getStatusListForBroadcast();
                 broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $list2]);
             }
-        }
-        else {
+        } else {
             sendToClient($clientSocket, ['action' => 'ERROR', 'message' => 'Unknown action']);
         }
     }
@@ -153,14 +158,16 @@ do {
 
 // ========================= HELPERS ==============================
 
-function createServerConnection($port, $host = 0) {
+function createServerConnection($port, $host = 0)
+{
     $serverSocket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
     socket_set_option($serverSocket, SOL_SOCKET, SO_REUSEADDR, 1);
     socket_bind($serverSocket, $host, $port);
     return $serverSocket;
 }
 
-function waitForIncomingMessageFromClients ($clients, $serverSocket) {
+function waitForIncomingMessageFromClients($clients, $serverSocket)
+{
     $readList = $clients;
     $readList[] = $serverSocket;
     $writeList = $exceptionList = [];
@@ -169,21 +176,45 @@ function waitForIncomingMessageFromClients ($clients, $serverSocket) {
     return $readList;
 }
 
-function disconnectClient ($clientSocket, &$listOfConnectedClients, &$screenToSocket, &$socketToScreen) {
-    if (($clientKey = array_search($clientSocket, $listOfConnectedClients, true)) !== false) {
+function disconnectClient($clientSocket, &$listOfConnectedClients, &$screenToSocket, &$socketToScreen)
+{
+    global $gm;
+
+    $clientKey = array_search($clientSocket, $listOfConnectedClients, true);
+    if ($clientKey !== false) {
         unset($listOfConnectedClients[$clientKey]);
+        // reindexes array to avoid holes
+        $listOfConnectedClients = array_values($listOfConnectedClients);
     }
-    $intKey = @spl_object_id($clientSocket);
+
+    $intKey = spl_object_id($clientSocket);
     if (isset($socketToScreen[$intKey])) {
-        $sn = $socketToScreen[$intKey];
+        $screenname = $socketToScreen[$intKey];
+
+        // removes from logged_in table
+        if ($gm->handleLogout($screenname)) {
+            echo "User {$screenname} logged out.\n";
+        } else {
+            echo "Failed to remove {$screenname} from logged_in\n";
+        }
+
+        // removes socket mappings
         unset($socketToScreen[$intKey]);
-        if (isset($screenToSocket[$sn])) unset($screenToSocket[$sn]);
+        if (isset($screenToSocket[$screenname]))
+            unset($screenToSocket[$screenname]);
+
+        // broadcasts updated user list
+        $userList = $gm->getStatusListForBroadcast();
+        broadcastToAll($listOfConnectedClients, ['action' => 'UPDATED-USER-LIST-AND-STATUS', 'list' => $userList]);
     }
+
+    // closes the socket
     @socket_close($clientSocket);
     echo "Disconnected client. #clients: " . count($listOfConnectedClients) . "\n";
 }
 
-function performHandshake($clientSocket) {
+function performHandshake($clientSocket)
+{
     // read initial HTTP headers from client
     $len = @socket_recv($clientSocket, $headers, 4096, 0);
     if ($len === false || $len === 0) {
@@ -223,8 +254,10 @@ function performHandshake($clientSocket) {
     return true;
 }
 
-function unmask($payload) {
-    if (strlen($payload) == 0) return "";
+function unmask($payload)
+{
+    if (strlen($payload) == 0)
+        return "";
     $length = ord($payload[1]) & 127;
     if ($length == 126) {
         $masks = substr($payload, 4, 4);
@@ -243,7 +276,8 @@ function unmask($payload) {
     return $unmaskedtext;
 }
 
-function mask($message) {
+function mask($message)
+{
     $frame = [];
     $frame[0] = 129;
     $length = strlen($message);
@@ -255,8 +289,8 @@ function mask($message) {
         $frame[3] = $length & 255;
     } else {
         $frame[1] = 127;
-        for ($i=0;$i<8;$i++) {
-            $frame[2+$i] = ($length >> (56-($i*8))) & 255;
+        for ($i = 0; $i < 8; $i++) {
+            $frame[2 + $i] = ($length >> (56 - ($i * 8))) & 255;
         }
     }
     foreach (str_split($message) as $char) {
@@ -265,13 +299,15 @@ function mask($message) {
     return implode(array_map('chr', $frame));
 }
 
-function sendToClient($clientSocket, $assoc) {
+function sendToClient($clientSocket, $assoc)
+{
     $msg = json_encode($assoc);
     $framed = mask($msg);
     @socket_write($clientSocket, $framed, strlen($framed));
 }
 
-function broadcastToAll($clients, $assoc) {
+function broadcastToAll($clients, $assoc)
+{
     $msg = json_encode($assoc);
     $framed = mask($msg);
     foreach ($clients as $client) {
